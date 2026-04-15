@@ -1,0 +1,34 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class FallingPlatform : MonoBehaviour
+{
+    [SerializeField] private float delayBeforeFall = 1f;
+    [SerializeField] private float destroyDelay = 2f;
+
+    private bool hasTriggered = false;
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (!hasTriggered && collision.gameObject.CompareTag("Player"))
+        {
+            hasTriggered = true;
+            StartCoroutine(FallPlatform());
+        }
+    }
+
+    private IEnumerator FallPlatform()
+    {
+        yield return new WaitForSeconds(delayBeforeFall);
+
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.isKinematic = false;
+        }
+
+        yield return new WaitForSeconds(destroyDelay);
+        Destroy(gameObject);
+    }
+}
