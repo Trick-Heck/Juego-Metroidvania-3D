@@ -1,0 +1,159 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class CrowAI : MonoBehaviour
+{
+    [Header("General")]
+    [SerializeField] private float orbitDistance = 2f;
+    [SerializeField] private float orbitSpeed = 50f;
+    [SerializeField] private float attackDuration = 0.3f;
+    [SerializeField] private float returnDuration = 0.6f;
+
+    private Transform player;
+    private float orbitAngle;
+    private bool isOrbiting = false;
+    private bool isAttacking = false;
+    private bool canDamage = false;
+    private bool isDead = false;
+
+    private void Start()
+    {
+        player = GameObject.FindGameObjectWithTag("Player").transform;
+    }
+
+    public void ActivateCrow()
+    {
+        if (player == null) return;
+
+        orbitAngle = Random.Range(0f, 360f);
+        CrowManager.Instance.RegisterCrow(this);
+        StartOrbiting();
+    }
+
+    public void StartOrbiting()
+    {
+        isOrbiting = true;
+    }
+
+    private void Update()
+    {
+        if (isOrbiting && player != null && !isAttacking && !isDead)
+        {
+            OrbitAroundPlayer();
+        }
+    }
+
+    private void OrbitAroundPlayer()
+    {
+        orbitAngle += orbitSpeed * Time.deltaTime;
+        float radians = orbitAngle * Mathf.Deg2Rad;
+        float yOffset = 5f + Mathf.Sin(Time.time * 2f) * 0.5f;
+
+        Vector3 orbitPos = new Vector3(
+            Mathf.Cos(radians) * orbitDistance,
+            yOffset,
+            Mathf.Sin(radians) * orbitDistance
+        );
+
+        transform.position = player.position + orbitPos;
+        transform.LookAt(player.position);
+    }
+
+    public IEnumerator Attack()
+    {
+        if (isDead || player == null) yield break;
+
+        isOrbiting = false;
+        isAttacking = true;
+        canDamage = true;
+
+        Vector3 start = transform.position;
+        Vector3 target = player.position + Vector3.up * 0.6f;
+
+        float elapsed = 0f;
+        while (elapsed < attackDuration)
+        {
+            if (this == null) yield break;
+            transform.position = Vector3.Lerp(start, target, elapsed / attackDuration);
+            transform.LookAt(player.position);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        canDamage = false;
+
+        yield return new WaitForSeconds(0.1f);
+
+        elapsed = 0f;
+        Vector3 returnPos = GetOrbitPosition();
+
+        while (elapsed < returnDuration)
+        {
+            if (this == null) yield break;
+            transform.position = Vector3.Lerp(transform.position, returnPos, elapsed / returnDuration);
+            transform.LookAt(player.position);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (this != null)
+        {
+            isAttacking = false;
+            isOrbiting = true;
+        }
+    }
+
+    private Vector3 GetOrbitPosition()
+    {
+        float radians = orbitAngle * Mathf.Deg2Rad;
+        float yOffset = 5f + Mathf.Sin(Time.time * 2f) * 0.5f;
+
+        return player.position + new Vector3(
+            Mathf.Cos(radians) * orbitDistance,
+            yOffset,
+            Mathf.Sin(radians) * orbitDistance
+        );
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (!canDamage) return;
+
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            Health playerHealth = collision.gameObject.GetComponent<Health>();
+            if (playerHealth != null)
+            {
+                playerHealth.TakeDamage(1);
+                canDamage = false;
+            }
+        }
+    }
+
+    public void Die()
+    {
+        if (isDead) return;
+
+        isDead = true;
+        isAttacking = false;
+        StopAllCoroutines();
+
+        if (CrowManager.Instance != null)
+        {
+            CrowManager.Instance.UnregisterCrow(this);
+        }
+
+        Destroy(gameObject);
+    }
+
+    public bool IsDead()
+    {
+        return isDead;
+    }
+
+    public bool IsCurrentlyAttacking()
+    {
+        return isAttacking;
+    }
+}
