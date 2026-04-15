@@ -1,0 +1,20 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class SpikeTrap : MonoBehaviour
+{
+    [Header("Daño al jugador")]
+    [SerializeField] private int damageAmount = 1;
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            if (collision.gameObject.TryGetComponent<Health>(out Health playerHealth))
+            {
+                playerHealth.TakeDamage(damageAmount);
+            }
+        }
+    }
+}
