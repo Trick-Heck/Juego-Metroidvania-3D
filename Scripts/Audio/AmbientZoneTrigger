@@ -1,0 +1,17 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class AmbientZoneTrigger : MonoBehaviour
+{
+    public AudioClip ambientClip;
+    public float fadeDuration = 2f;
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Player"))
+        {
+            AmbientAudioManager.Instance.ChangeAmbient(ambientClip, fadeDuration);
+        }
+    }
+}
