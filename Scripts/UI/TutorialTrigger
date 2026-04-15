@@ -1,0 +1,85 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using TMPro;
+
+public class TutorialTrigger : MonoBehaviour
+{
+    public GameObject tutorialTextObject;
+    [TextArea]
+    public string tutorialMessage;
+    public float displayDuration = 5f;
+    public float fadeDuration = 1f;
+    public AudioClip tutorialSound;
+
+    private TextMeshProUGUI tutorialText;
+    private CanvasGroup canvasGroup;
+    private AudioSource audioSource;
+    private bool hasBeenShown = false;
+
+    private void Start()
+    {
+        if (tutorialTextObject != null)
+        {
+            tutorialText = tutorialTextObject.GetComponentInChildren<TextMeshProUGUI>();
+            canvasGroup = tutorialTextObject.GetComponent<CanvasGroup>();
+
+            if (tutorialTextObject.activeSelf)
+                tutorialTextObject.SetActive(false);
+
+            if (canvasGroup == null)
+                canvasGroup = tutorialTextObject.AddComponent<CanvasGroup>();
+
+            canvasGroup.alpha = 0f;
+        }
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+            audioSource = gameObject.AddComponent<AudioSource>();
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Player") && !hasBeenShown && tutorialText != null)
+        {
+            hasBeenShown = true;
+            tutorialText.text = tutorialMessage;
+            tutorialTextObject.SetActive(true);
+            if (tutorialSound != null && audioSource != null)
+            {
+                audioSource.PlayOneShot(tutorialSound);
+            }
+            StartCoroutine(FadeIn());
+
+            if (displayDuration > 0)
+            {
+                StartCoroutine(FadeOutAfterTime(displayDuration));
+            }
+        }
+    }
+    IEnumerator FadeIn()
+    {
+        float timer = 0f;
+        while (timer < fadeDuration)
+        {
+            timer += Time.deltaTime;
+            canvasGroup.alpha = Mathf.Lerp(0f, 1f, timer / fadeDuration);
+            yield return null;
+        }
+        canvasGroup.alpha = 1f;
+    }
+
+    IEnumerator FadeOutAfterTime(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        float timer = 0f;
+        while (timer < fadeDuration)
+        {
+            timer += Time.deltaTime;
+            canvasGroup.alpha = Mathf.Lerp(1f, 0f, timer / fadeDuration);
+            yield return null;
+        }
+        canvasGroup.alpha = 0f;
+        tutorialTextObject.SetActive(false);
+    }
+}
