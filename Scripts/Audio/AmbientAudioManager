@@ -1,0 +1,52 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class AmbientAudioManager : MonoBehaviour
+{
+    public static AmbientAudioManager Instance;
+
+    public AudioSource ambientSource;
+    private Coroutine fadeCoroutine;
+
+    void Awake()
+    {
+        if (Instance == null)
+            Instance = this;
+        else
+            Destroy(gameObject);
+    }
+
+    public void ChangeAmbient(AudioClip newClip, float fadeTime = 2f)
+    {
+        if (ambientSource.clip == newClip) return;
+
+        if (fadeCoroutine != null)
+            StopCoroutine(fadeCoroutine);
+
+        fadeCoroutine = StartCoroutine(FadeToNewClip(newClip, fadeTime));
+    }
+
+    IEnumerator FadeToNewClip(AudioClip newClip, float duration)
+    {
+        float startVolume = ambientSource.volume;
+
+        for (float t = 0; t < duration; t += Time.unscaledDeltaTime)
+        {
+            ambientSource.volume = Mathf.Lerp(startVolume, 0, t / duration);
+            yield return null;
+        }
+
+        ambientSource.Stop();
+        ambientSource.clip = newClip;
+        ambientSource.Play();
+
+        for (float t = 0; t < duration; t += Time.unscaledDeltaTime)
+        {
+            ambientSource.volume = Mathf.Lerp(0, startVolume, t / duration);
+            yield return null;
+        }
+
+        ambientSource.volume = startVolume;
+    }
+}
