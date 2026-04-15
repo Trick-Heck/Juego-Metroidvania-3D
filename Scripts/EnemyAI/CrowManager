@@ -1,0 +1,118 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class CrowManager : MonoBehaviour
+{
+    public static CrowManager Instance;
+
+    private Queue<CrowAI> crowQueue = new Queue<CrowAI>();
+    private List<CrowAI> activeCrows = new List<CrowAI>();
+    private bool isAttacking = false;
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    public void RegisterCrow(CrowAI crow)
+    {
+        crowQueue.Enqueue(crow);
+        activeCrows.Add(crow);
+    }
+
+    public void UnregisterCrow(CrowAI crow)
+    {
+        activeCrows.Remove(crow);
+
+        Queue<CrowAI> newQueue = new Queue<CrowAI>();
+        while (crowQueue.Count > 0)
+        {
+            CrowAI current = crowQueue.Dequeue();
+            if (current != null && current != crow && !current.IsDead())
+            {
+                newQueue.Enqueue(current);
+            }
+        }
+        crowQueue = newQueue;
+
+        if (activeCrows.Count == 0)
+        {
+            isAttacking = false;
+            StopAllCoroutines();
+        }
+        else
+        {
+            if (!isAttacking)
+            {
+                StartAttackCycle();
+            }
+        }
+    }
+
+    public void StartAttackCycle()
+    {
+        if (!isAttacking && activeCrows.Count > 0)
+        {
+            StartCoroutine(AttackCycle());
+        }
+    }
+
+    private IEnumerator AttackCycle()
+    {
+        isAttacking = true;
+
+        while (activeCrows.Count > 0)
+        {
+            while (crowQueue.Count > 0 && (crowQueue.Peek() == null || crowQueue.Peek().IsDead()))
+            {
+                crowQueue.Dequeue();
+            }
+
+            if (crowQueue.Count == 0 && activeCrows.Count > 0)
+            {
+                foreach (var crow in activeCrows)
+                {
+                    if (crow != null && !crow.IsDead() && !crowQueue.Contains(crow))
+                    {
+                        crowQueue.Enqueue(crow);
+                    }
+                }
+            }
+
+            if (crowQueue.Count > 0)
+            {
+                CrowAI currentCrow = crowQueue.Dequeue();
+
+                if (currentCrow != null && !currentCrow.IsDead())
+                {
+                    StartCoroutine(currentCrow.Attack());
+
+                    while (currentCrow != null && currentCrow.IsCurrentlyAttacking())
+                    {
+                        yield return null;
+                    }
+
+                    if (!currentCrow.IsDead())
+                    {
+                        crowQueue.Enqueue(currentCrow);
+                    }
+                }
+
+                yield return new WaitForSeconds(0.5f);
+            }
+
+            yield return null;
+        }
+
+        isAttacking = false;
+    }
+}
